@@ -225,8 +225,8 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 					System.out.println("You win");
 				}
 				send_socket("newgame");
-				window.dispose();
-				window = new ExampleDisplay();
+				myContainer.remove(rect1);
+				myContainer.remove(rect2);
 				gameMap = new Circle[gridSize][gridSize];
 	//			System.exit(0);
 			}
@@ -293,17 +293,5 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		System.out.println("Score player "+ player +": "+ score);
 		gameMap[newpos[0]][newpos[1]]=null;
 	}
-//	public static void start_game() throws IOException {
-//		window = new ExampleDisplay();
-//		String test = receive_ok();
-//		test = receive_ok();	    
-//		rect1 = add_rectangle(test, window);
-//		test = receive_ok();
-//		rect2 = add_rectangle(test, window);
-//		test = receive_ok();
-//		gameMap = new Circle[gridSize][gridSize];
-//		add_cercle(test, window);
-//		thread = new_thread();
-//		thread.start();
-//	}
+
 } // EndClass ExampleDisplay

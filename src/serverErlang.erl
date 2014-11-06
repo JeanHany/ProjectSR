@@ -27,8 +27,6 @@ init([]) ->
 	%% 	{reply, _Reply, State} = get_state(),
 	{ok, State}.
 
-add_player(S) -> gen_server:call(?MODULE, {add_player, [S]}).
-
 send_position(S) -> gen_server:call(?MODULE, {send_position, [S]}).
 
 test_position(S, Pos) -> gen_server:call(?MODULE, {test_position, [S, Pos]}).
@@ -69,14 +67,6 @@ handle_call({test_position, [S, Pos]}, _From, #state{player1=P1, player2=P2, soc
 			end
 	end,
 	{reply, Reply, State2};
-handle_call({add_player, [S]}, _From, #state{nbplayer=Nbj}=State) ->
-	io:format("Add player ~p~n", [S]),
-	Reply = ok,
-	Nbj2 = Nbj+1,
-	%% 	Points = mnesia:dirty_read(point),
-	%% 	io:format("Point All ~p~n", [Points]),
-	State3 = State#state{nbplayer=Nbj2},
-	{reply, Reply, State3};
 handle_call({set_point, [Point]}, _From, #state{points=Points, nbpas=Pas}=State) ->	
 	Reply = ok,
 	Pas2 = Pas+1,
