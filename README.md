@@ -1,6 +1,18 @@
 # Distributed System
 
-##TODO
-Makefile
-Mod basic need to refactor
-Just run for 1 party
+## TODO
+
+need to refactor and make test
+
+## Compiling
+
+$make
+
+## Run
+You can play with only two players
+
+Server
+$./startServer.sh
+
+Client
+$./startClient.sh
