@@ -12,7 +12,9 @@ $make
 You can play with only two players
 
 Server
+
 $./startServer.sh
 
 Client
+
 $./startClient.sh
