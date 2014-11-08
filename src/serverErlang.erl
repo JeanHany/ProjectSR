@@ -75,7 +75,7 @@ handle_call({set_point, [Point]}, _From, #state{points=Points, nbpas=Pas}=State)
 			State3 = State#state{points=Point, nbpas=Pas2};
 		Pas2 =< 10 ->
 			Points2 = <<Points/binary, <<";">>/binary, Point/binary>>,
-			io:format("Set point ~p~n", [Points2]),
+%% 			io:format("Set point ~p~n", [Points2]),
 			State3 = State#state{points=Points2, nbpas=Pas2};
 		true -> State3 = State
 	end,
