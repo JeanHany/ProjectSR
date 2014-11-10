@@ -21,8 +21,6 @@ suite() ->
 %% %% @end
 %% %%--------------------------------------------------------------------
 init_per_suite(_Config) ->
-%% 	serverErlang:start_link(),
-%% 	application:start(serverErlang),
 	[{ok, ok}].
 %% 
 %% 
@@ -37,7 +35,6 @@ init_per_suite(_Config) ->
 %% %% @end
 %% %%--------------------------------------------------------------------
 end_per_suite(_Config) ->
-%% 	serverEr:stop(serverErlang),
 	ok.
 %% %%--------------------------------------------------------------------
 %% %% @spec init_per_group(GroupName, Config0) ->
@@ -48,6 +45,7 @@ end_per_suite(_Config) ->
 %% %% @end
 %% %%--------------------------------------------------------------------
 init_per_group(_GroupName, Config) ->
+	application:start(serverErlang),
 	Config.
 %% %%--------------------------------------------------------------------
 %% %% @spec end_per_group(GroupName, Config0) ->
@@ -57,6 +55,7 @@ init_per_group(_GroupName, Config) ->
 %% %% @end
 %% %%--------------------------------------------------------------------
 end_per_group(_GroupName, _Config) ->
+	application:stop(serverErlang),
 	ok.
 %% %%--------------------------------------------------------------------
 %% %% @spec init_per_testcase(TestCase, Config0) ->
@@ -94,7 +93,9 @@ end_per_testcase(_TestCase, _Config) ->
 %% get_query,
 groups() ->
 	[
-	 {test_all, [], [test_pos_receive]}
+	 {test_recv, [], [test_receive, test_receive2]},
+	 {test_pos, [], [test_pos]},
+	 {test_pos2, [], [test_pos2]}
 	].
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -105,14 +106,15 @@ groups() ->
 %% @end
 %%--------------------------------------------------------------------
 all() ->
-	[{group, test_all}].
+	[{group, test_recv},
+	 {group, test_pos},
+	 {group, test_pos2}].
 %
 % @doc Test creation of a new resource on a new ID.
 % expect: "result"
 % %end
 %
-test_pos_receive(_Config) ->
-	serverErlang:start_link(),	
+test_receive(_Config) ->
 	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
 	gen_tcp:send(Sock1, <<"ok">>),
 	case gen_tcp:recv(Sock1, 0) of
@@ -122,4 +124,56 @@ test_pos_receive(_Config) ->
 			Result = <<"ko">>
 	end,
 	gen_tcp:close(Sock1),
-	?assertEqual(Result, <<"ok\n">> ).
+	?assertEqual(Result, <<"ok\n5;0,0\n">> ).
+
+test_receive2(_Config) ->
+	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	gen_tcp:send(Sock2, <<"ok">>),
+	case gen_tcp:recv(Sock2, 0) of
+		{ok, V} -> 
+			Result = V;
+		{error, _Result} ->
+			Result = <<"ko">>
+	end,
+	gen_tcp:close(Sock2),
+	?assertEqual(Result, <<"ok\n5;19,0\n6;0,0\n">> ).
+
+test_pos(_Config) ->
+	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	gen_tcp:send(Sock1, <<"ok">>),
+	gen_tcp:recv(Sock1, 0),
+	gen_tcp:send(Sock2, <<"ok">>),
+	gen_tcp:recv(Sock2, 0),
+	gen_tcp:recv(Sock1, 0),
+	gen_tcp:recv(Sock2, 0),
+	gen_tcp:send(Sock1, <<"0,1">>),
+	case gen_tcp:recv(Sock1, 0) of
+		{ok, V2} -> 
+			Result2 = V2;
+		{error, _Result2} ->
+			Result2 = <<"ko">>
+	end,
+	gen_tcp:close(Sock1),
+	gen_tcp:close(Sock2),
+	?assertEqual(Result2, <<"1;0,1\n">> ).
+
+test_pos2(_Config) ->
+	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	gen_tcp:send(Sock1, <<"ok">>),
+	gen_tcp:recv(Sock1, 0),
+	gen_tcp:send(Sock2, <<"ok">>),
+	gen_tcp:recv(Sock2, 0),
+	gen_tcp:recv(Sock1, 0),
+	gen_tcp:recv(Sock2, 0),
+	gen_tcp:send(Sock2, <<"0,-1">>),
+	case gen_tcp:recv(Sock1, 0) of
+		{ok, V2} -> 
+			Result2 = V2;
+		{error, _Result2} ->
+			Result2 = <<"ko">>
+	end,
+	gen_tcp:close(Sock1),
+	gen_tcp:close(Sock2),
+	?assertEqual(Result2, <<"2;0,-1\n">> ).
