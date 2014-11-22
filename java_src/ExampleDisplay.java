@@ -101,6 +101,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	static BufferedWriter bufOut = null;
 	static Rectangle rect1 = null ;
 	static Rectangle rect2 = null ;
+	static Rectangle rect3 = null ;
 	static ExampleDisplay window = null;
 
 	/* gameMap contains the plan of the sweets to collect initialized to
@@ -200,10 +201,10 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 			String[] tab_S = userInput.split(";");
 			if(tab_S[0].equals("1") )
 			{
-				move_rectangle1(tab_S[1]);
+				move_rectangle(rect1, tab_S[1]);
 			}else if(tab_S[0].equals("2"))
 			{
-				move_rectangle2(tab_S[1]);
+				move_rectangle(rect2, tab_S[1]);
 			}else if(tab_S[0].equals("3"))
 			{
 				remove_circle(tab_S[1], tab_S[2], tab_S[3]);
@@ -227,6 +228,10 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 				send_socket("newgame");
 				myContainer.remove(rect1);
 				myContainer.remove(rect2);
+				if(rect3 != null)
+				{
+					myContainer.remove(rect3);
+				}
 				gameMap = new Circle[gridSize][gridSize];
 	//			System.exit(0);
 			}
@@ -236,7 +241,15 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 //				System.out.println("Substring "+newstring);
 				add_cercle(newstring, window);
 			}
-		}
+			else if(tab_S[0].equals("8"))
+			{
+				rect3 = add_rectangle(tab_S[1], window);
+			}
+			else if(tab_S[0].equals("9"))
+			{
+				move_rectangle(rect3, tab_S[1]);
+			}
+		}		
 		return userInput;
 	}
 	
@@ -254,20 +267,12 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		bufOut.flush();
 	}
 	
-	public static void move_rectangle1(String pos)
+	public static void move_rectangle(Rectangle rect, String pos)
 	{
 		String[] npos = pos.split(",");
 		int[] newpos = {Integer.parseInt(npos[0]), Integer.parseInt(npos[1])};
-		rect1.moveRect(newpos);
-		rect1.repaint();
-	}
-	
-	public static void move_rectangle2(String pos)
-	{
-		String[] npos = pos.split(",");
-		int[] newpos = {Integer.parseInt(npos[0]), Integer.parseInt(npos[1])};
-		rect2.moveRect(newpos);
-		rect2.repaint();
+		rect.moveRect(newpos);
+		rect.repaint();
 	}
 	
 	public static void add_cercle(String point, ExampleDisplay window)
@@ -288,7 +293,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	{
 		String[] npos = pos.split(",");
 		int[] newpos = {Integer.parseInt(npos[0]), Integer.parseInt(npos[1])};
-		Circle c = gameMap[newpos[0]][newpos[1]];
+		Circle c = gameMap[newpos[0]][newpos[1]];		
 		myContainer.remove(c);
 		System.out.println("Score player "+ player +": "+ score);
 		gameMap[newpos[0]][newpos[1]]=null;
