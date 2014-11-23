@@ -2,14 +2,14 @@
 
 ## TODO
 
-need to refactor and make test
+need to refactor and make other test
 
 ## Compiling
 
 $make
 
 ## Run
-You can play with only two players
+You can play with three players
 
 Server
 
