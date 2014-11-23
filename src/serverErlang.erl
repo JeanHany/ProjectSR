@@ -7,7 +7,7 @@
 -export([start_link/0, server/1, loop/1]).
 %% -export([add_player/1, send_position/1, test_position/2, get_state/0]).
 
--record(state, {nbplayer = 0, player1, player2, player3, socket1, socket2, socket3, points, pointsbin, nbpas=0, nbsweet1=0, nbsweet2=0, nbsweet3=0}).
+-record(state, {nbplayer = 0, player1, player2, player3, socket1, socket2, socket3, points, nbpas=0, nbsweet1=0, nbsweet2=0, nbsweet3=0}).
 -type state() :: #state{}.
 -record(point, {coordX, coordY}).
 -record(playercoord, {nbplayer, coord, nbsweet}).
@@ -22,7 +22,7 @@ init([]) ->
 	io:format("Init", []),
 	start_s(),
 	create_table(),
-%% 	put_coordonnees(10), %%Voir ou le mettre
+	%% 	put_coordonnees(10), %%Voir ou le mettre
 	State = #state{},
 	%% 	{reply, _Reply, State} = get_state(),
 	{ok, State}.
@@ -97,14 +97,14 @@ handle_call({set_point, [Point]}, _From, #state{points=Points, nbpas=Pas}=State)
 		Pas2 =< 10 ->
 			Pointbin = binary:split(Points, <<";">>, [global]),
 			case lists:member(Point, Pointbin) of
-					false -> Points2 = <<Points/binary, <<";">>/binary, Point/binary>>;				
-					true -> Points2 = Points
+				false -> Points2 = <<Points/binary, <<";">>/binary, Point/binary>>;				
+				true -> Points2 = Points
 			end,
 			State3 = State#state{points=Points2, nbpas=Pas2};
 		true -> State3 = State
 	end,
 	{reply, Reply, State3};
-handle_call({send_position, [S]}, _From, #state{nbplayer=Nbj, player1=Pos_play1, player2=Pos_player2, socket1=S1, socket2=S2, points=Points, pointsbin=_Pointbin}=State) ->
+handle_call({send_position, [S]}, _From, #state{nbplayer=Nbj, player1=Pos_play1, player2=Pos_player2, socket1=S1, socket2=S2, points=Points}=State) ->
 	Reply = ok,
 	Nbj2 = Nbj+1,
 	if
@@ -133,7 +133,7 @@ handle_call({send_position, [S]}, _From, #state{nbplayer=Nbj, player1=Pos_play1,
 			send_pos(Points3, S1),
 			send_pos(Points3, S),
 			Pointbin1 = binary:split(Points, <<";">>, [global]),
-			State3 = State#state{nbplayer=Nbj2, player2=Pos21, socket2=S, points=Pointbin1, pointsbin= Points3},
+			State3 = State#state{nbplayer=Nbj2, player2=Pos21, socket2=S, points=Pointbin1},
 			{reply, Reply, State3};
 		Nbj2 == 3 -> 
 			Pos2 = <<"5;0,19\n">>,
@@ -151,13 +151,13 @@ handle_call({send_position, [S]}, _From, #state{nbplayer=Nbj, player1=Pos_play1,
 			send_pos(Pos312, S),
 			send_pos(Pos213, S),
 			%%List to binary
-%%TODO parse List
-%% 			Points3 = << <<"7;">>/binary, Pointbin/binary, <<"\n">>/binary>>,
-%% 			io:format("Point3 ~p~n", [Points3]),
+			%%TODO parse List
+			%% 			Points3 = << <<"7;">>/binary, Pointbin/binary, <<"\n">>/binary>>,
+			%% 			io:format("Point3 ~p~n", [Points3]),
 			Pointbin12 = parse_list(Points),
 			Pointbin123 = << <<"7;">>/binary, Pointbin12/binary>>,
 			send_pos(Pointbin123, S),
-%% 			Pointbin = binary:split(Points, <<";">>, [global]),
+			%% 			Pointbin = binary:split(Points, <<";">>, [global]),
 			State3 = State#state{nbplayer=Nbj2, player3=Pos31, socket3=S},
 			{reply, Reply, State3};
 		true -> error_logger:info_msg("Full player ~p", []),
@@ -194,7 +194,7 @@ start_servers(LS) ->
 server(LS) ->
 	case gen_tcp:accept(LS) of
 		{ok,S} ->
-%% 			add_player(S),
+			%% 			add_player(S),
 			spawn(?MODULE, loop, [S]),
 			io:format("Socket ~p~n", [S]),
 			%% 			send_position(S),
@@ -214,7 +214,7 @@ loop(S) ->
 					gen_tcp:send(S, <<"ok\n">>),
 					send_position(S),
 					put_coordonnees(10);
-%% 					put_coordonnees(10);
+				%% 					put_coordonnees(10);
 				<<"newgame">> ->
 					restart(S);
 				Other -> 	
@@ -272,21 +272,21 @@ new_position(Pos, Socket1, Socket2, Socket3, Nb1, Points, Nb2, Nb3, Player, New_
 		<<"1">> -> 
 			Posnew = <<<<"1;">>/binary, Pos/binary, <<"\n">>/binary>>,
 			Posnew2 = <<<<"2;">>/binary, Pos/binary, <<"\n">>/binary>>,		
-%% 			Posnew3 = <<<<"9;">>/binary, Pos/binary, <<"\n">>/binary>>,
+			%% 			Posnew3 = <<<<"9;">>/binary, Pos/binary, <<"\n">>/binary>>,
 			gen_tcp:send(Socket1, Posnew),
 			gen_tcp:send(Socket2, Posnew2),	
 			gen_tcp:send(Socket3, Posnew2);
 		<<"2">> ->
 			Posnew = <<<<"1;">>/binary, Pos/binary, <<"\n">>/binary>>,
 			Posnew2 = <<<<"2;">>/binary, Pos/binary, <<"\n">>/binary>>,		
- 			Posnew3 = <<<<"9;">>/binary, Pos/binary, <<"\n">>/binary>>,
+			Posnew3 = <<<<"9;">>/binary, Pos/binary, <<"\n">>/binary>>,
 			gen_tcp:send(Socket1, Posnew),
 			gen_tcp:send(Socket2, Posnew2),	
 			gen_tcp:send(Socket3, Posnew3);
 		<<"3">> ->
 			Posnew = <<<<"1;">>/binary, Pos/binary, <<"\n">>/binary>>,
-%% 			Posnew2 = <<<<"2;">>/binary, Pos/binary, <<"\n">>/binary>>,		
- 			Posnew3 = <<<<"9;">>/binary, Pos/binary, <<"\n">>/binary>>,
+			%% 			Posnew2 = <<<<"2;">>/binary, Pos/binary, <<"\n">>/binary>>,		
+			Posnew3 = <<<<"9;">>/binary, Pos/binary, <<"\n">>/binary>>,
 			gen_tcp:send(Socket1, Posnew),
 			gen_tcp:send(Socket2, Posnew3),	
 			gen_tcp:send(Socket3, Posnew3)
@@ -370,62 +370,65 @@ test_point3(Socket1, Socket2, Socket3, New_pos, Points, Nb1, Nb2, Nb3, Player, N
 			Nbpas2 = 0,
 			Nbplay2 = 0,
 			if
-				(Nb12 > Nb2) and (Nb12 > Nb3) ->	Posnew4 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew5 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew4),
-												gen_tcp:send(Socket2, Posnew5),
-												gen_tcp:send(Socket3, Posnew5);
-				(Nb12 == Nb2) and (Nb12 == Nb3) -> 	Posnew4 = <<"4;equals\n">>,
-												gen_tcp:send(Socket1, Posnew4),
-												gen_tcp:send(Socket2, Posnew4),
-												gen_tcp:send(Socket3, Posnew4);
+				(Nb12 > Nb2) and (Nb12 > Nb3) ->	
+					Posnew4 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew5 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew4),
+					gen_tcp:send(Socket2, Posnew5),
+					gen_tcp:send(Socket3, Posnew5);
+				(Nb12 == Nb2) and (Nb12 == Nb3) -> 	
+					Posnew4 = <<"4;equals\n">>,
+					gen_tcp:send(Socket1, Posnew4),
+					gen_tcp:send(Socket2, Posnew4),
+					gen_tcp:send(Socket3, Posnew4);
 				(Nb2 > Nb3) and (Nb2 > Nb12) -> 					
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew4 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew4),
-												gen_tcp:send(Socket2, Posnew5),
-												gen_tcp:send(Socket3, Posnew4);
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew4 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew4),
+					gen_tcp:send(Socket2, Posnew5),
+					gen_tcp:send(Socket3, Posnew4);
 				(Nb2 == Nb3) and (Nb2 > Nb12) -> 					
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew4 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew4),
-												gen_tcp:send(Socket2, Posnew5),
-												gen_tcp:send(Socket3, Posnew4);
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew4 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew4),
+					gen_tcp:send(Socket2, Posnew5),
+					gen_tcp:send(Socket3, Posnew4);
 				(Nb2 == Nb3) and (Nb2 < Nb12) -> 					
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew4 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew5),
-												gen_tcp:send(Socket2, Posnew4),
-												gen_tcp:send(Socket3, Posnew4);
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew4 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew5),
+					gen_tcp:send(Socket2, Posnew4),
+					gen_tcp:send(Socket3, Posnew4);
 				(Nb12 == Nb3) and (Nb12 > Nb2) -> 					
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew4 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew5),
-												gen_tcp:send(Socket2, Posnew4),
-												gen_tcp:send(Socket3, Posnew5);
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew4 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew5),
+					gen_tcp:send(Socket2, Posnew4),
+					gen_tcp:send(Socket3, Posnew5);
 				(Nb12 == Nb3) and (Nb12 < Nb2) -> 					
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew4 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew4),
-												gen_tcp:send(Socket2, Posnew5),
-												gen_tcp:send(Socket3, Posnew4);
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew4 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew4),
+					gen_tcp:send(Socket2, Posnew5),
+					gen_tcp:send(Socket3, Posnew4);
 				(Nb12 == Nb2) and (Nb2 > Nb3) -> 					
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew4 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew5),
-												gen_tcp:send(Socket2, Posnew5),
-												gen_tcp:send(Socket3, Posnew4);
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew4 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew5),
+					gen_tcp:send(Socket2, Posnew5),
+					gen_tcp:send(Socket3, Posnew4);
 				(Nb12 == Nb2) and (Nb2 < Nb3) -> 					
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												Posnew4 = <<"4;other\n">>,
-												gen_tcp:send(Socket1, Posnew4),
-												gen_tcp:send(Socket2, Posnew4),
-												gen_tcp:send(Socket3, Posnew5);
-				true ->							Posnew4 = <<"4;other\n">>,
-												Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-												gen_tcp:send(Socket1, Posnew4),
-												gen_tcp:send(Socket2, Posnew4),
-												gen_tcp:send(Socket3, Posnew5)
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					Posnew4 = <<"4;other\n">>,
+					gen_tcp:send(Socket1, Posnew4),
+					gen_tcp:send(Socket2, Posnew4),
+					gen_tcp:send(Socket3, Posnew5);
+				true ->							
+					Posnew4 = <<"4;other\n">>,
+					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
+					gen_tcp:send(Socket1, Posnew4),
+					gen_tcp:send(Socket2, Posnew4),
+					gen_tcp:send(Socket3, Posnew5)
 			end,
 			Nb122 = 0,
 			Nb22 = 0,
@@ -453,7 +456,7 @@ calcul_newPos(P1, X1, Y1) ->
 %%TODO erase table, new point , replace player send you player 3
 restart(Socket) ->	
 	put_coordonnees(10),
-%% 	add_player(Socket),
+	%% 	add_player(Socket),
 	gen_tcp:send(Socket, <<"ok\n">>),
 	send_position(Socket).
 
@@ -464,6 +467,5 @@ parse_list(List) ->
 								<<X/binary, Bina/binary>>;
 							true -> 
 								<<X/binary, <<";">>/binary, Bina/binary>>
-								end end, <<"\n">>, List).
-	
-	
+						end end, <<"\n">>, List).
+
