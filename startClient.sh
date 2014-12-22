@@ -1,1 +1,1 @@
-exec java -classpath bin ExampleDisplay 
+exec java -classpath bin ExampleDisplay $1

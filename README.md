@@ -9,7 +9,7 @@ need to refactor and make other test
 $make
 
 ## Run
-You can play with three players
+You can play with two players
 
 Server
 
@@ -17,4 +17,4 @@ $./startServer.sh
 
 Client
 
-$./startClient.sh
+$./startClient.sh namePlayer

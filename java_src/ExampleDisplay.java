@@ -16,6 +16,9 @@ import java.net.SocketAddress;
 import java.util.Map ;
 import java.util.HashMap ;
 import java.util.List ;
+import java.util.Set;
+import java.util.Iterator;
+
 import java.util.ArrayList ;
 
 import java.util.Random ;
@@ -103,6 +106,9 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	static Rectangle rect2 = null ;
 	static Rectangle rect3 = null ;
 	static ExampleDisplay window = null;
+	static String player;
+	static ArrayList<String> arrayList = new ArrayList<String>();
+	static HashMap<String, Rectangle> hashmapRect = new HashMap<String, Rectangle>();
 
 	/* gameMap contains the plan of the sweets to collect initialized to
 	 * null by default */
@@ -158,6 +164,10 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		 bufOut = new BufferedWriter( new OutputStreamWriter( socket.getOutputStream() ) );
 		bufOut.write( "ok" );
 		bufOut.flush();
+		//1ere attribut name
+		bufOut.write( a[0] );
+		bufOut.flush();
+		arrayList.add(a[0]);
 		in =	
 				new BufferedReader(
 						new InputStreamReader(socket.getInputStream()));
@@ -190,6 +200,11 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		Rectangle myRectangle = new Rectangle(window) ;
 		myRectangle.moveRect(test);
 		myRectangle.repaint();
+		hashmapRect.put(player, myRectangle);
+		if(hashmapRect.size() == 1)
+		{
+			rect1 = myRectangle;
+		}
 		return myRectangle;
 	}
 
@@ -199,21 +214,22 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		if(userInput.contains(";"))
 		{
 			String[] tab_S = userInput.split(";");
-			if(tab_S[0].equals("1") )
+			if(hashmapRect.containsKey(tab_S[0]) )
 			{
-				move_rectangle(rect1, tab_S[1]);
-			}else if(tab_S[0].equals("2"))
-			{
-				move_rectangle(rect2, tab_S[1]);
+				move_rectangle(hashmapRect.get(tab_S[0]), tab_S[1]);
+//			}else if(tab_S[0].equals("2"))
+//			{
+//				move_rectangle(rect2, tab_S[1]);
 			}else if(tab_S[0].equals("3"))
 			{
 				remove_circle(tab_S[1], tab_S[2], tab_S[3]);
 			}else if(tab_S[0].equals("5"))
 			{
-				rect1 = add_rectangle(tab_S[1], window);
-			}else if(tab_S[0].equals("6"))
-			{
-				rect2 = add_rectangle(tab_S[1], window);
+				player = tab_S[1];
+				add_rectangle(tab_S[2], window);
+//			}else if(tab_S[0].equals("6"))
+//			{
+//				rect2 = add_rectangle(tab_S[1], window);
 			}else if(tab_S[0].equals("4"))
 			{
 				if(tab_S[1].equals("other"))
@@ -226,12 +242,19 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 					System.out.println("You win");
 				}
 				send_socket("newgame");
-				myContainer.remove(rect1);
-				myContainer.remove(rect2);
-				if(rect3 != null)
-				{
-					myContainer.remove(rect3);
-				}
+//				myContainer.remove(rect1);
+//				myContainer.remove(rect2);
+//				if(rect3 != null)
+//				{
+//					myContainer.remove(rect3);
+//				}
+				Set cles = hashmapRect.keySet();
+				Iterator it = cles.iterator();
+				while (it.hasNext()){
+				   Object cle = it.next(); // tu peux typer plus finement ici
+				   Rectangle valeur = hashmapRect.get(cle);
+					myContainer.remove(valeur);
+					}
 				gameMap = new Circle[gridSize][gridSize];
 	//			System.exit(0);
 			}
@@ -241,14 +264,14 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 //				System.out.println("Substring "+newstring);
 				add_cercle(newstring, window);
 			}
-			else if(tab_S[0].equals("8"))
-			{
-				rect3 = add_rectangle(tab_S[1], window);
-			}
-			else if(tab_S[0].equals("9"))
-			{
-				move_rectangle(rect3, tab_S[1]);
-			}
+//			else if(tab_S[0].equals("8"))
+//			{
+//				rect3 = add_rectangle(tab_S[1], window);
+//			}
+//			else if(tab_S[0].equals("9"))
+//			{
+//				move_rectangle(rect3, tab_S[1]);
+//			}
 		}		
 		return userInput;
 	}
