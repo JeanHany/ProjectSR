@@ -6,7 +6,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0, server/1, loop/1]).
 
--record(state, {nbplayer = 0, player1, mapPosId, mapSocketId, player2, player3, socket1, socket2, socket3, points, nbpas=0, nbsweet1=0, nbsweet2=0, nbsweet3=0}).
+-record(state, {nbplayer = 0, player1, mapPosId, mapSocketId, mapScore, player2, player3, socket1, socket2, socket3, points, nbpas=0, nbsweet1=0, nbsweet2=0, nbsweet3=0}).
 -type state() :: #state{}.
 -record(point, {coordX, coordY}).
 -record(playercoord, {nbplayer, coord, nbsweet}).
@@ -33,8 +33,9 @@ test_position(S, Pos) -> gen_server:call(?MODULE, {test_position, [S, Pos]}).
 %%Set les points generer aleatoirement
 set_point(Point) -> gen_server:call(?MODULE, {set_point, [Point]}).
 
-handle_call({test_position, [S, Pos]}, _From, #state{player1=_P1, mapPosId=MapPos, mapSocketId = MapSock, player2=_P2, player3=_P3, socket1=Socket1, socket2=Socket2, socket3=Socket3, points=Points,
-													 nbsweet1=Nb1, nbsweet2=Nb2, nbsweet3=Nb3, nbpas=Nbpas, nbplayer=Nbplay}=State) ->
+%%TODO passe pos entre fonction
+handle_call({test_position, [S, Pos]}, _From, #state{player1=_P1, mapPosId=MapPos, mapSocketId = MapSock, player2=_P2, player3=_P3, socket1=_Socket1, socket2=_Socket2, socket3=_Socket3, points=Points,
+													 mapScore= MapScore, nbsweet1=Nb1, nbsweet2=Nb2, nbsweet3=Nb3, nbpas=Nbpas, nbplayer=_Nbplay}=State) ->
 	
 	[X, Y] = binary:split(Pos, <<",">>),
 	X1 = list_to_integer(binary_to_list(X)),
@@ -42,19 +43,20 @@ handle_call({test_position, [S, Pos]}, _From, #state{player1=_P1, mapPosId=MapPo
 	Id = maps:get(S, MapSock),
 	LastPos = maps:get(Id, MapPos),
 	ListPos = maps:values(MapPos),
-%% 	case S of
-%% 		Socket1 ->
+	%% 	case S of
+	%% 		Socket1 ->
 	New_pos = calcul_newPos(LastPos, X1, Y1),
 	case lists:member(New_pos, ListPos) of
-				true -> 
-							Reply = ko,
-							State2 = State;
-				false -> 					
-					Reply = ok,
-					MapNPos = maps:put(Id, New_pos, MapPos),
-					{NewPoint, Nb12, Nbpas2, Nbplay2, Nb22, Nb33} = new_position(MapSock, Pos, Socket1, Socket2, Socket3, Nb1, Points, Nb2, Nb3, New_pos, Nbpas, Id),
-					%%TODO change pos player
-					State2 = State#state{player1=New_pos, points=NewPoint, nbsweet1=Nb12, nbsweet2=Nb22, nbsweet3=Nb33, nbpas=Nbpas2, nbplayer=Nbplay2, mapPosId=MapNPos}
+		true -> 
+			Reply = ko,
+			State2 = State;
+		false -> 					
+			Reply = ok,
+			MapNPos = maps:put(Id, New_pos, MapPos),
+			{NewPoint, Nb12, Nbpas2, Nbplay2, Nb22, Nb33, NewMapSc} = new_position(MapScore, MapSock, Pos, Nb1, Points, Nb2, Nb3, New_pos, Nbpas, Id),
+			%%TODO change pos player
+			State2 = State#state{player1=New_pos, points=NewPoint, nbsweet1=Nb12, nbsweet2=Nb22, nbsweet3=Nb33,  mapScore= NewMapSc,
+								 nbpas=Nbpas2, nbplayer=Nbplay2, mapPosId=MapNPos}
 	end,
 	{reply, Reply, State2};
 handle_call({set_point, [Point]}, _From, #state{points=Points, nbpas=Pas}=State) ->	
@@ -73,7 +75,7 @@ handle_call({set_point, [Point]}, _From, #state{points=Points, nbpas=Pas}=State)
 		true -> State3 = State
 	end,
 	{reply, Reply, State3};
-handle_call({send_position, [S, Id]}, _From, #state{mapPosId=MapPos, mapSocketId=MapId, nbplayer=Nbj, player1=Pos_play1, player2=Pos_player2, socket1=S1, socket2=S2, points=Points}=State) ->
+handle_call({send_position, [S, Id]}, _From, #state{mapScore= MapScore, mapPosId=MapPos, mapSocketId=MapId, nbplayer=Nbj, player1=_Pos_play1, player2=_Pos_player2, socket1=S1, socket2=_S2, points=Points}=State) ->
 	Reply = ok,
 	Nbj2 = Nbj+1,
 	if
@@ -84,10 +86,12 @@ handle_call({send_position, [S, Id]}, _From, #state{mapPosId=MapPos, mapSocketId
 			mnesia:dirty_write(PlayC),
 			send_pos(Pos2, S),
 			Map = maps:new(),
-		    Map1 = maps:put(S, Id, Map),
+			Map1 = maps:put(S, Id, Map),
 			Map11 = maps:new(),
 			Map12 = maps:put(Id, Pos21, Map11),
-			State2 = State#state{nbplayer=Nbj2, player1=Pos21, socket1=S, mapSocketId = Map1, mapPosId=Map12},
+			Map13 = maps:new(),
+			Map14 = maps:put(Id, 0, Map13),
+			State2 = State#state{nbplayer=Nbj2, player1=Pos21, socket1=S, mapSocketId = Map1, mapPosId=Map12, mapScore=Map14},
 			{reply, Reply, State2};
 		Nbj2 == 2 -> 
 			Pos2 = << <<"5;">>/binary, Id/binary, <<";19,0\n">>/binary >>,
@@ -107,16 +111,17 @@ handle_call({send_position, [S, Id]}, _From, #state{mapPosId=MapPos, mapSocketId
 			Pointbin1 = binary:split(Points, <<";">>, [global]),
 			Map2 = maps:put(S, Id, MapId),
 			Map21 = maps:put(Id, Pos21, MapPos),
-			State3 = State#state{nbplayer=Nbj2, player2=Pos21, socket2=S, points=Pointbin1, mapSocketId = Map2, mapPosId=Map21},
+			Map31 = maps:put(Id, 0, MapScore),
+			State3 = State#state{nbplayer=Nbj2, player2=Pos21, socket2=S, points=Pointbin1, mapSocketId = Map2, mapPosId=Map21, mapScore=Map31},
 			{reply, Reply, State3};
 		Nbj2 == 3 -> 
 			Pos2 = << <<"5;">>/binary, Id/binary, <<";0,19\n">>/binary >>,
 			IdPlayer = maps:keys(MapPos),
 			Sockets = maps:keys(MapId),
 			
-				lists:foreach(fun(Sock) ->
-						gen_tcp:send(Sock, Pos2)
-				  end, Sockets),
+			lists:foreach(fun(Sock) ->
+								  gen_tcp:send(Sock, Pos2)
+						  end, Sockets),
 			Pos31 = <<"0,19">>,
 			PlayC = #playercoord{nbplayer=3, coord= Pos31, nbsweet=0},
 			mnesia:dirty_write(PlayC),	
@@ -124,16 +129,17 @@ handle_call({send_position, [S, Id]}, _From, #state{mapPosId=MapPos, mapSocketId
 			send_pos(Pos2, S),
 			%% Send Pos client 3 			
 			lists:foreach(fun(Player) -> 
-				Pospl = maps:get(Player, MapPos),			  
-				PosPlayer = << <<"5;">>/binary, Player/binary, <<";">>/binary, Pospl/binary,<<"\n">>/binary >>,
-				send_pos(PosPlayer, S)
-			end, IdPlayer),
+								  Pospl = maps:get(Player, MapPos),			  
+								  PosPlayer = << <<"5;">>/binary, Player/binary, <<";">>/binary, Pospl/binary,<<"\n">>/binary >>,
+								  send_pos(PosPlayer, S)
+						  end, IdPlayer),
 			Map21 = maps:put(Id, Pos31, MapPos),
 			Map2 = maps:put(S, Id, MapId),
+			Map31 = maps:put(Id, 0, MapScore),
 			Pointbin12 = parse_list(Points),
 			Pointbin123 = << <<"7;">>/binary, Pointbin12/binary>>,
 			send_pos(Pointbin123, S),
-			State3 = State#state{nbplayer=Nbj2, player3=Pos31, socket3=S,  mapSocketId = Map2, mapPosId=Map21},
+			State3 = State#state{nbplayer=Nbj2, player3=Pos31, socket3=S,  mapSocketId = Map2, mapPosId=Map21, mapScore=Map31},
 			{reply, Reply, State3};
 		true -> 
 			X = random:uniform(20) -1,
@@ -143,24 +149,25 @@ handle_call({send_position, [S, Id]}, _From, #state{mapPosId=MapPos, mapSocketId
 			Pos2 = << <<"5;">>/binary, Id/binary, <<";">>/binary, X1/binary,<<",">>/binary, Y2/binary, <<"\n">>/binary >>,
 			IdPlayer = maps:keys(MapPos),
 			Sockets = maps:keys(MapId),			
-				lists:foreach(fun(Sock) ->
-						gen_tcp:send(Sock, Pos2)
-				  end, Sockets),
+			lists:foreach(fun(Sock) ->
+								  gen_tcp:send(Sock, Pos2)
+						  end, Sockets),
 			Pos31 = <<X1/binary,<<",">>/binary, Y2/binary>>,
 			PlayC = #playercoord{nbplayer=Nbj2, coord= Pos31, nbsweet=0},
 			mnesia:dirty_write(PlayC),
 			send_pos(Pos2, S),	
-				lists:foreach(fun(Player) -> 
-				Pospl = maps:get(Player, MapPos),			  
-				PosPlayer = << <<"5;">>/binary, Player/binary, <<";">>/binary, Pospl/binary,<<"\n">>/binary >>,
-				send_pos(PosPlayer, S)
-			end, IdPlayer),
+			lists:foreach(fun(Player) -> 
+								  Pospl = maps:get(Player, MapPos),			  
+								  PosPlayer = << <<"5;">>/binary, Player/binary, <<";">>/binary, Pospl/binary,<<"\n">>/binary >>,
+								  send_pos(PosPlayer, S)
+						  end, IdPlayer),
 			Map21 = maps:put(Id, Pos31, MapPos),
 			Map2 = maps:put(S, Id, MapId),
+			Map31 = maps:put(Id, 0, MapScore),
 			Pointbin12 = parse_list(Points),
 			Pointbin123 = << <<"7;">>/binary, Pointbin12/binary>>,
 			send_pos(Pointbin123, S),
-			State3 = State#state{nbplayer=Nbj2,  mapSocketId = Map2, mapPosId=Map21},
+			State3 = State#state{nbplayer=Nbj2,  mapSocketId = Map2, mapPosId=Map21, mapScore=Map31},
 			{reply, Reply, State3}
 	end;
 handle_call(_Call, _From, State) -> {reply, ko, State}.
@@ -211,12 +218,12 @@ loop(S) ->
 				<<"ok">> ->
 					case gen_tcp:recv(S, 0) of
 						{ok, Data1} ->
-								gen_tcp:send(S, <<"ok\n">>),
-								send_position(S, Data1),
-								put_coordonnees(10);
-					{error, closed} ->
-						io:format("Socket ~w closed [~w]~n",[S,self()]),
-						ok
+							gen_tcp:send(S, <<"ok\n">>),
+							send_position(S, Data1),
+							put_coordonnees(10);
+						{error, closed} ->
+							io:format("Socket ~w closed [~w]~n",[S,self()]),
+							ok
 					end;
 				<<"newgame">> ->
 					restart(S);
@@ -266,99 +273,57 @@ mod(X,Y) when X < 0 -> Y + X rem Y;
 mod(0,_Y) -> 0.
 
 %%Envoie la nouvelle position aux players
-new_position(MapSock, Pos, Socket1, Socket2, Socket3, Nb1, Points, Nb2, Nb3, New_pos, Nbpas, Id) ->
+new_position(MapScore, MapSock, Pos, Nb1, Points, Nb2, Nb3, New_pos, Nbpas, Id) ->
 	Posnew = << Id/binary, <<";">>/binary, Pos/binary, <<"\n">>/binary>>,
 	Sockets = maps:keys(MapSock),
 	lists:foreach(fun(Sock) ->
-						gen_tcp:send(Sock, Posnew)
+						  gen_tcp:send(Sock, Posnew)
 				  end, Sockets),
 	case lists:member(New_pos, Points) of
-		true -> {Nb12, NewPoint, Nbpas2, Nbplay2, Nb22, Nb32} = test_point(Sockets, Socket1, Socket2, Socket3, New_pos, Points, Nb1, Nb2, Nb3, Id, Nbpas);
+		true -> {Nb12, NewPoint, Nbpas2, Nbplay2, Nb22, Nb32, NewMapSc} = test_point(MapScore, Sockets, New_pos, Points, Nb1, Nb2, Nb3, Id, Nbpas);
 		false ->
 			Nbplay2 = 3,
 			Nbpas2 = Nbpas,
 			Nb12 = Nb1,
 			Nb22 = Nb2,
 			Nb32 = Nb3,
-			NewPoint = Points
+			NewPoint = Points,
+			NewMapSc = MapScore
 	end,
-	{NewPoint, Nb12, Nbpas2, Nbplay2, Nb22, Nb32}.
+	{NewPoint, Nb12, Nbpas2, Nbplay2, Nb22, Nb32, NewMapSc}.
 
 %%Test des point pour 3 player
 %%TODO test les point
-test_point(Sockets, Socket1, Socket2, Socket3, New_pos, Points, Nb1, Nb2, Nb3, Player, Nbpas) ->
+test_point(MapScore, Sockets, New_pos, Points, Nb1, Nb2, Nb3, Player, Nbpas) ->
 	Nb12 = Nb1 + 1,
 	Nb13 = list_to_binary(integer_to_list(Nb12)),
-	Posnew3 = <<<<"3;">>/binary, New_pos/binary, <<";">>/binary, Nb13/binary, <<";">>/binary, Player/binary, <<"\n">>/binary>>,
+	Nb14 = maps:get(Player, MapScore),
+	Nb15 = Nb14 + 1,
+	Nb16 = list_to_binary(integer_to_list(Nb15)),
+	Posnew3 = <<<<"3;">>/binary, New_pos/binary, <<";">>/binary, Nb16/binary, <<";">>/binary, Player/binary, <<"\n">>/binary>>,
 	NewPoint = lists:delete(New_pos, Points),
 	lists:foreach(fun(Sock) ->
-						gen_tcp:send(Sock, Posnew3)
+						  gen_tcp:send(Sock, Posnew3)
 				  end, Sockets),
+	NewMapSc = maps:update(Player, Nb15, MapScore),
 	case lists:flatlength(NewPoint) of
 		0 ->
 			Nbpas2 = 0,
 			Nbplay2 = 0,
-			if
-				(Nb12 > Nb2) and (Nb12 > Nb3) ->	
-					Posnew4 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew5 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew4),
-					gen_tcp:send(Socket2, Posnew5),
-					gen_tcp:send(Socket3, Posnew5);
-				(Nb12 == Nb2) and (Nb12 == Nb3) -> 	
-					Posnew4 = <<"4;equals\n">>,
-					gen_tcp:send(Socket1, Posnew4),
-					gen_tcp:send(Socket2, Posnew4),
-					gen_tcp:send(Socket3, Posnew4);
-				(Nb2 > Nb3) and (Nb2 > Nb12) -> 					
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew4 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew4),
-					gen_tcp:send(Socket2, Posnew5),
-					gen_tcp:send(Socket3, Posnew4);
-				(Nb2 == Nb3) and (Nb2 > Nb12) -> 					
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew4 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew4),
-					gen_tcp:send(Socket2, Posnew5),
-					gen_tcp:send(Socket3, Posnew4);
-				(Nb2 == Nb3) and (Nb2 < Nb12) -> 					
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew4 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew5),
-					gen_tcp:send(Socket2, Posnew4),
-					gen_tcp:send(Socket3, Posnew4);
-				(Nb12 == Nb3) and (Nb12 > Nb2) -> 					
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew4 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew5),
-					gen_tcp:send(Socket2, Posnew4),
-					gen_tcp:send(Socket3, Posnew5);
-				(Nb12 == Nb3) and (Nb12 < Nb2) -> 					
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew4 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew4),
-					gen_tcp:send(Socket2, Posnew5),
-					gen_tcp:send(Socket3, Posnew4);
-				(Nb12 == Nb2) and (Nb2 > Nb3) -> 					
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew4 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew5),
-					gen_tcp:send(Socket2, Posnew5),
-					gen_tcp:send(Socket3, Posnew4);
-				(Nb12 == Nb2) and (Nb2 < Nb3) -> 					
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					Posnew4 = <<"4;other\n">>,
-					gen_tcp:send(Socket1, Posnew4),
-					gen_tcp:send(Socket2, Posnew4),
-					gen_tcp:send(Socket3, Posnew5);
-				true ->							
-					Posnew4 = <<"4;other\n">>,
-					Posnew5 = << <<"4;">>/binary, Player/binary, <<"\n">>/binary >>,
-					gen_tcp:send(Socket1, Posnew4),
-					gen_tcp:send(Socket2, Posnew4),
-					gen_tcp:send(Socket3, Posnew5)
-			end,
+			ListScore = maps:values(MapScore),
+			MaxScore = lists:max(ListScore),
+			PlayerMax = maps:to_list(MapScore),
+			lists:foreach(fun(Play) -> 
+								  case Play of
+									  {Value, MaxScore} -> 
+										  Posnew4 = << <<"4;">>/binary, Value/binary, <<"\n">>/binary >>,
+										  lists:foreach(fun(Sock) ->
+																gen_tcp:send(Sock, Posnew4)
+														end, Sockets);
+									  	_ -> io:format("Error")
+								  end
+						  end, PlayerMax),
+			
 			Nb122 = 0,
 			Nb22 = 0,
 			Nb33 = 0;
@@ -370,7 +335,7 @@ test_point(Sockets, Socket1, Socket2, Socket3, New_pos, Points, Nb1, Nb2, Nb3, P
 			Nbpas2 = Nbpas,
 			io:format("Point +1 ~p ~n", [Nb])
 	end,
-	{Nb122, NewPoint, Nbpas2, Nbplay2, Nb22, Nb33}.
+	{Nb122, NewPoint, Nbpas2, Nbplay2, Nb22, Nb33, NewMapSc}.
 
 calcul_newPos(P1, X1, Y1) ->
 	[X11, Y11] = binary:split(P1, <<",">>),
@@ -382,7 +347,7 @@ calcul_newPos(P1, X1, Y1) ->
 	S2 = list_to_binary(integer_to_list(Y2)),
 	<<S1/binary, <<",">>/binary, S2/binary>>.
 
-%%TODO erase table, new point, Put Id
+%%TODO erase table, new point, Put Id, Check bug
 restart(Socket) ->	
 	put_coordonnees(10),
 	gen_tcp:send(Socket, <<"ok\n">>),

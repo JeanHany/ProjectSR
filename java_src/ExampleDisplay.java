@@ -232,16 +232,16 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 //				rect2 = add_rectangle(tab_S[1], window);
 			}else if(tab_S[0].equals("4"))
 			{
-				if(tab_S[1].equals("other"))
-				{
-					System.out.println("You loose");
-				}else if(tab_S[1].equals("equals"))
-				{
-					System.out.println("Equality");
-				}else{
-					System.out.println("You win");
-				}
-				send_socket("newgame");
+//				if(tab_S[1].equals("other"))
+//				{
+					System.out.println(tab_S[1]+" Win the game");
+//				}else if(tab_S[1].equals("equals"))
+//				{
+//					System.out.println("Equality");
+//				}else{
+//					System.out.println("You win");
+//				}
+				
 //				myContainer.remove(rect1);
 //				myContainer.remove(rect2);
 //				if(rect3 != null)
@@ -255,6 +255,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 				   Rectangle valeur = hashmapRect.get(cle);
 					myContainer.remove(valeur);
 					}
+				send_socket("newgame");
 				gameMap = new Circle[gridSize][gridSize];
 	//			System.exit(0);
 			}
