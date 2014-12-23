@@ -2,15 +2,14 @@
 
 ## TODO
 
-need to refactor and make other test
+Refactor test and faulth tolerance
 
 ## Compiling
 
 $make
 
 ## Run
-You can play with two players
-
+	
 Server
 
 $./startServer.sh
