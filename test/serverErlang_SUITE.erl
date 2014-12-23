@@ -117,6 +117,8 @@ all() ->
 test_receive(_Config) ->
 	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
 	gen_tcp:send(Sock1, <<"ok">>),
+	timer:sleep(100),
+	gen_tcp:send(Sock1, <<"player">>),
 	case gen_tcp:recv(Sock1, 0) of
 		{ok, V} -> 
 			Result = V;
@@ -124,11 +126,13 @@ test_receive(_Config) ->
 			Result = <<"ko">>
 	end,
 	gen_tcp:close(Sock1),
-	?assertEqual(Result, <<"ok\n5;0,0\n">> ).
+	?assertEqual(Result, <<"ok\n5;player;0,0\n">> ).
 
 test_receive2(_Config) ->
 	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
 	gen_tcp:send(Sock2, <<"ok">>),
+	timer:sleep(100),
+	gen_tcp:send(Sock2, <<"player2">>),
 	case gen_tcp:recv(Sock2, 0) of
 		{ok, V} -> 
 			Result = V;
@@ -136,17 +140,22 @@ test_receive2(_Config) ->
 			Result = <<"ko">>
 	end,
 	gen_tcp:close(Sock2),
-	?assertEqual(Result, <<"ok\n5;19,0\n6;0,0\n">> ).
+	?assertEqual(Result, <<"ok\n5;player2;19,0\n5;player;0,0\n">> ).
 
 test_pos(_Config) ->
 	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
 	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
 	gen_tcp:send(Sock1, <<"ok">>),
-	gen_tcp:recv(Sock1, 0),
+	timer:sleep(100),
+	gen_tcp:send(Sock1, <<"player1">>),
+	gen_tcp:recv(Sock1, 0),	
 	gen_tcp:send(Sock2, <<"ok">>),
+	timer:sleep(100),
+	gen_tcp:send(Sock2, <<"player2">>),
 	gen_tcp:recv(Sock2, 0),
 	gen_tcp:recv(Sock1, 0),
 	gen_tcp:recv(Sock2, 0),
+	gen_tcp:recv(Sock1, 0),
 	gen_tcp:send(Sock1, <<"0,1">>),
 	case gen_tcp:recv(Sock1, 0) of
 		{ok, V2} -> 
@@ -154,19 +163,25 @@ test_pos(_Config) ->
 		{error, _Result2} ->
 			Result2 = <<"ko">>
 	end,
+	io:format("test ~p~n", [Result2]),
 	gen_tcp:close(Sock1),
 	gen_tcp:close(Sock2),
-	?assertEqual(Result2, <<"1;0,1\n">> ).
+	?assertEqual(Result2, <<"player1;0,1\n">> ).
 
 test_pos2(_Config) ->
 	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
 	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
 	gen_tcp:send(Sock1, <<"ok">>),
-	gen_tcp:recv(Sock1, 0),
+	timer:sleep(100),
+	gen_tcp:send(Sock1, <<"player1">>),
+	gen_tcp:recv(Sock1, 0),	
 	gen_tcp:send(Sock2, <<"ok">>),
+	timer:sleep(100),
+	gen_tcp:send(Sock2, <<"player2">>),
 	gen_tcp:recv(Sock2, 0),
 	gen_tcp:recv(Sock1, 0),
 	gen_tcp:recv(Sock2, 0),
+	gen_tcp:recv(Sock1, 0),
 	gen_tcp:send(Sock2, <<"0,-1">>),
 	case gen_tcp:recv(Sock1, 0) of
 		{ok, V2} -> 
@@ -176,4 +191,4 @@ test_pos2(_Config) ->
 	end,
 	gen_tcp:close(Sock1),
 	gen_tcp:close(Sock2),
-	?assertEqual(Result2, <<"2;0,-1\n">> ).
+	?assertEqual(Result2, <<"player2;0,-1\n">> ).

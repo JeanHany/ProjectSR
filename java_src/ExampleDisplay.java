@@ -217,9 +217,6 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 			if(hashmapRect.containsKey(tab_S[0]) )
 			{
 				move_rectangle(hashmapRect.get(tab_S[0]), tab_S[1]);
-//			}else if(tab_S[0].equals("2"))
-//			{
-//				move_rectangle(rect2, tab_S[1]);
 			}else if(tab_S[0].equals("3"))
 			{
 				remove_circle(tab_S[1], tab_S[2], tab_S[3]);
@@ -227,52 +224,24 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 			{
 				player = tab_S[1];
 				add_rectangle(tab_S[2], window);
-//			}else if(tab_S[0].equals("6"))
-//			{
-//				rect2 = add_rectangle(tab_S[1], window);
 			}else if(tab_S[0].equals("4"))
 			{
-//				if(tab_S[1].equals("other"))
-//				{
 					System.out.println(tab_S[1]+" Win the game");
-//				}else if(tab_S[1].equals("equals"))
-//				{
-//					System.out.println("Equality");
-//				}else{
-//					System.out.println("You win");
-//				}
-				
-//				myContainer.remove(rect1);
-//				myContainer.remove(rect2);
-//				if(rect3 != null)
-//				{
-//					myContainer.remove(rect3);
-//				}
 				Set cles = hashmapRect.keySet();
 				Iterator it = cles.iterator();
 				while (it.hasNext()){
-				   Object cle = it.next(); // tu peux typer plus finement ici
+				   Object cle = it.next(); 
 				   Rectangle valeur = hashmapRect.get(cle);
 					myContainer.remove(valeur);
 					}
 				send_socket("newgame");
 				gameMap = new Circle[gridSize][gridSize];
-	//			System.exit(0);
 			}
 			else if(tab_S[0].equals("7"))
 			{
 				String newstring = userInput.substring(2);
-//				System.out.println("Substring "+newstring);
 				add_cercle(newstring, window);
 			}
-//			else if(tab_S[0].equals("8"))
-//			{
-//				rect3 = add_rectangle(tab_S[1], window);
-//			}
-//			else if(tab_S[0].equals("9"))
-//			{
-//				move_rectangle(rect3, tab_S[1]);
-//			}
 		}		
 		return userInput;
 	}
