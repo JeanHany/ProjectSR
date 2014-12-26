@@ -12,6 +12,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 
 import java.util.Map ;
 import java.util.HashMap ;
@@ -96,7 +97,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	static int cellSize = 20 ;
 	static int gridSize = 20 ;
 	Map<Integer,int[]> moveTable = new HashMap<Integer,int[]>() ;
-//	static Rectangle myRectangle = null ;
+	//	static Rectangle myRectangle = null ;
 	static Container myContainer ;
 	int numberOfSweets = 10 ;
 	static BufferedReader in = null;
@@ -109,6 +110,9 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	static String player;
 	static ArrayList<String> arrayList = new ArrayList<String>();
 	static HashMap<String, Rectangle> hashmapRect = new HashMap<String, Rectangle>();
+	static InetSocketAddress inetSocketAddress;
+	static String userInput = "nothing";
+	static PrintWriter out;
 
 	/* gameMap contains the plan of the sweets to collect initialized to
 	 * null by default */
@@ -144,11 +148,11 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		Point newpoint = rect1.getLocation();
 		newtest[0] = test[0] + newpoint.x;
 		newtest[1] = test[1] + newpoint.y;
-//		System.out.println("newpoint"+newtest[0] +" "+newtest[1]);
+		//		System.out.println("newpoint"+newtest[0] +" "+newtest[1]);
 		String send = newtest[0]+","+newtest[1];
 		try{
 			send_socket(send);
-//			System.out.println("Recv "+recv);
+			//			System.out.println("Recv "+recv);
 		}catch(IOException io){
 			System.out.println("Exeption "+io);;
 		}
@@ -156,12 +160,12 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	} // EndMethod keyPressed
 	// Changer localhost
 	public static void main(String[] a) throws IOException {
-		 socket= new Socket();
-		InetSocketAddress inetSocketAddress = new InetSocketAddress(InetAddress.getByName("localhost"), 5678);
+		socket= new Socket();
+		inetSocketAddress = new InetSocketAddress(InetAddress.getByName("localhost"), 5678);
 		socket.connect(inetSocketAddress);
-		PrintWriter out =
+		out =
 				new PrintWriter(socket.getOutputStream(), true);
-		 bufOut = new BufferedWriter( new OutputStreamWriter( socket.getOutputStream() ) );
+		bufOut = new BufferedWriter( new OutputStreamWriter( socket.getOutputStream() ) );
 		bufOut.write( "ok" );
 		bufOut.flush();
 		//1ere attribut name
@@ -171,24 +175,54 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		in =	
 				new BufferedReader(
 						new InputStreamReader(socket.getInputStream()));
-		
+
 		// Fonction receive et fonction put triangle et fonction send4  		
 		window = new ExampleDisplay();
 		gameMap = new Circle[gridSize][gridSize];
 		new Thread() {
-		      @Override
-		      public void run() {
-		    	  String position="";
-		        while(true) { // This thread runs forever
-		        	try{
-		        	position = receive();
-		        	}catch(IOException io){
-		    			position="ko";
-		    		}
-		      }
-		    }
+			@Override
+			public void run() {
+				//		    	  String position="";
+				while(true) { // This thread runs forever
+					try{
+						if(socket.isClosed()){
+							Socket socket2 = new Socket();
+							socket = socket2;
+							socket.connect(inetSocketAddress);
+							out =
+									new PrintWriter(socket.getOutputStream(), true);
+							bufOut = new BufferedWriter( new OutputStreamWriter( socket.getOutputStream() ) );
+							String play = arrayList.get(0);
+							bufOut.write( "reconect");
+							bufOut.flush();
+							bufOut.write(play);
+							bufOut.flush();
+							in =	
+									new BufferedReader(
+											new InputStreamReader(socket.getInputStream()));
+							
+						}
+						receive();
+					}catch(IOException io){
+						System.out.println("Error "+io.toString());		      
+					}catch(NullPointerException nl)
+					{
+						System.out.println("Error"+nl.toString());
+						try{
+							socket.connect(inetSocketAddress);
+						}catch(IOException io){
+							System.out.println("Error connect"+io.toString());		      
+						}
+//						try{
+//							receive();
+//						}catch(IOException io){
+//							System.out.println("Error "+io.toString());		      
+//						}
+					}
+				}
+			}
 		}.start();
-		
+
 		System.out.println("Fini ");
 	} // EndMethod main
 
@@ -208,44 +242,57 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		return myRectangle;
 	}
 
-	public static String receive() throws IOException
+	public static void receive() throws IOException
 	{
-		String userInput = in.readLine();
-		if(userInput.contains(";"))
-		{
-			String[] tab_S = userInput.split(";");
-			if(hashmapRect.containsKey(tab_S[0]) )
+		try{
+			userInput = in.readLine();
+		}catch(SocketException socketexe){
+			System.out.println("Error reconnection");
+			socket.connect(inetSocketAddress);
+		}catch(IOException io){
+			System.out.println("Error reconnection");
+			//			socket.connect(inetSocketAddress);
+		}
+		if(userInput != null){
+			if(userInput.contains(";"))
 			{
-				move_rectangle(hashmapRect.get(tab_S[0]), tab_S[1]);
-			}else if(tab_S[0].equals("3"))
-			{
-				remove_circle(tab_S[1], tab_S[2], tab_S[3]);
-			}else if(tab_S[0].equals("5"))
-			{
-				player = tab_S[1];
-				add_rectangle(tab_S[2], window);
-			}else if(tab_S[0].equals("4"))
-			{
+				String[] tab_S = userInput.split(";");
+				if(hashmapRect.containsKey(tab_S[0]) )
+				{
+					move_rectangle(hashmapRect.get(tab_S[0]), tab_S[1]);
+				}else if(tab_S[0].equals("3"))
+				{
+					remove_circle(tab_S[1], tab_S[2], tab_S[3]);
+				}else if(tab_S[0].equals("5"))
+				{
+					player = tab_S[1];
+					add_rectangle(tab_S[2], window);
+				}else if(tab_S[0].equals("4"))
+				{
 					System.out.println(tab_S[1]+" Win the game");
-				Set cles = hashmapRect.keySet();
-				Iterator it = cles.iterator();
-				while (it.hasNext()){
-				   Object cle = it.next(); 
-				   Rectangle valeur = hashmapRect.get(cle);
-					myContainer.remove(valeur);
+					Set cles = hashmapRect.keySet();
+					Iterator it = cles.iterator();
+					while (it.hasNext()){
+						Object cle = it.next(); 
+						Rectangle valeur = hashmapRect.get(cle);
+						myContainer.remove(valeur);
 					}
-				send_socket("newgame");
-				gameMap = new Circle[gridSize][gridSize];
+					bufOut.write("newgame");
+					bufOut.flush();
+					gameMap = new Circle[gridSize][gridSize];
+				}
+				else if(tab_S[0].equals("7"))
+				{
+					String newstring = userInput.substring(2);
+					add_cercle(newstring, window);
+				}
 			}
-			else if(tab_S[0].equals("7"))
-			{
-				String newstring = userInput.substring(2);
-				add_cercle(newstring, window);
-			}
-		}		
-		return userInput;
+		}
+		else{
+			socket.close();
+		}
 	}
-	
+
 	public static String receive_ok() throws IOException
 	{
 		String userInput = in.readLine();
@@ -253,13 +300,13 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		return userInput;
 	}
 
-	
+
 	public static void send_socket(String send) throws IOException
 	{
 		bufOut.write( send );
 		bufOut.flush();
 	}
-	
+
 	public static void move_rectangle(Rectangle rect, String pos)
 	{
 		String[] npos = pos.split(",");
@@ -267,7 +314,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		rect.moveRect(newpos);
 		rect.repaint();
 	}
-	
+
 	public static void add_cercle(String point, ExampleDisplay window)
 	{
 		String[] npoint = point.split(";");
@@ -281,7 +328,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 			gameMap[j][k].setGridPos(j,k);
 		}
 	}
-	
+
 	public static void remove_circle(String pos, String score, String player)
 	{
 		String[] npos = pos.split(",");

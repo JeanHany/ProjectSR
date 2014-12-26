@@ -4,18 +4,20 @@
 -behavior(gen_server).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([start_link/0, server/1, loop/1]).
+-export([start_link/0, server/1, loop/1, init_local/0]).
 
 -record(state, {nbplayer = 0, player1, mapPosId, mapSocketId, mapScore, player2, player3, socket1, socket2, socket3, points, nbpas=0, nbsweet1=0, nbsweet2=0, nbsweet3=0}).
 -type state() :: #state{}.
 -record(point, {coordX, coordY}).
+-record(socketId, {socket, id}).
 -record(playercoord, {nbplayer, coord, nbsweet}).
 
 -spec start_link() -> {ok, pid()} | {error, term()}.
-start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link() -> 
+	gen_server_cluster:start(?MODULE, ?MODULE, [], []).
+%% 				gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%TODO : Init table mnesia in disc
-%% gerer tt les state
 -spec init([]) -> {ok, state()}.
 init([]) ->
 	io:format("Init", []),
@@ -24,16 +26,22 @@ init([]) ->
 	State = #state{},
 	{ok, State}.
 
-%%Send la position aux differents players
-send_position(S, Id) -> gen_server:call(?MODULE, {send_position, [S, Id]}).
+init_local() -> 
+	io:format("Init local", []),
+	start_s().
 
-send_position(S) -> gen_server:call(?MODULE, {send_position, [S]}).
+%%Send la position aux differents players
+send_position(S, Id) -> gen_server:call({global,?MODULE}, {send_position, [S, Id]}).
+
+send_position(S) -> gen_server:call({global,?MODULE}, {send_position, [S]}).
 
 %%Test calcul les nouvelles position
-test_position(S, Pos) -> gen_server:call(?MODULE, {test_position, [S, Pos]}).
+test_position(S, Pos) -> gen_server:call({global,?MODULE}, {test_position, [S, Pos]}).
 
 %%Set les points generer aleatoirement
-set_point(Point) -> gen_server:call(?MODULE, {set_point, [Point]}).
+set_point(Point) -> gen_server:call({global,?MODULE}, {set_point, [Point]}).
+
+reconnect(S, Id) -> gen_server:call({global,?MODULE}, {reconnect, [S, Id]}).
 
 %%TODO passe pos entre fonction
 handle_call({test_position, [S, Pos]}, _From, #state{player1=_P1, mapPosId=MapPos, mapSocketId = MapSock, player2=_P2, player3=_P3, socket1=_Socket1, socket2=_Socket2, socket3=_Socket3, points=Points,
@@ -79,12 +87,14 @@ handle_call({send_position, [S, Id]}, _From, #state{mapScore= MapScore, mapPosId
 	Reply = ok,
 	Nbj2 = Nbj+1,
 	io:format("Number of player ~p~n", [Nbj2]),
+	SockID = #socketId{socket=S, id= Id},
+%% 	mnesia:dirty_write(SockID),
 	if
 		Nbj2 == 1 ->
 			Pos2 = << <<"5;">>/binary, Id/binary, <<";0,0\n">>/binary >>,
 			Pos21 = <<"0,0">>,
 			PlayC = #playercoord{nbplayer=1, coord= Pos21, nbsweet=0},
-			mnesia:dirty_write(PlayC),
+%% 			mnesia:dirty_write(PlayC),
 			send_pos(Pos2, S),
 			Map = maps:new(),
 			Map1 = maps:put(S, Id, Map),
@@ -99,7 +109,7 @@ handle_call({send_position, [S, Id]}, _From, #state{mapScore= MapScore, mapPosId
 			Pos22 = << <<"5;">>/binary, Id/binary, <<";19,0\n">>/binary >>,
 			Pos21 = <<"19,0">>,
 			PlayC = #playercoord{nbplayer=2, coord= Pos21, nbsweet=0},
-			mnesia:dirty_write(PlayC),			
+%% 			mnesia:dirty_write(PlayC),			
 			send_pos(Pos2, S),
 			send_pos(Pos22, S1),
 			[Id1 | _T] = maps:values(MapId),
@@ -125,7 +135,7 @@ handle_call({send_position, [S, Id]}, _From, #state{mapScore= MapScore, mapPosId
 						  end, Sockets),
 			Pos31 = <<"0,19">>,
 			PlayC = #playercoord{nbplayer=3, coord= Pos31, nbsweet=0},
-			mnesia:dirty_write(PlayC),	
+%% 			mnesia:dirty_write(PlayC),	
 			%% Send pos au 3 Client
 			send_pos(Pos2, S),
 			%% Send Pos client 3 			
@@ -155,7 +165,7 @@ handle_call({send_position, [S, Id]}, _From, #state{mapScore= MapScore, mapPosId
 						  end, Sockets),
 			Pos31 = <<X1/binary,<<",">>/binary, Y2/binary>>,
 			PlayC = #playercoord{nbplayer=Nbj2, coord= Pos31, nbsweet=0},
-			mnesia:dirty_write(PlayC),
+%% 			mnesia:dirty_write(PlayC),
 			send_pos(Pos2, S),	
 			lists:foreach(fun(Player) -> 
 								  Pospl = maps:get(Player, MapPos),			  
@@ -181,7 +191,7 @@ handle_call({send_position, [S]}, _From, #state{mapScore= MapScore, mapPosId=Map
 			Pos2 = << <<"5;">>/binary, Id/binary, <<";0,0\n">>/binary >>,
 			Pos21 = <<"0,0">>,
 			PlayC = #playercoord{nbplayer=1, coord= Pos21, nbsweet=0},
-			mnesia:dirty_write(PlayC),
+%% 			mnesia:dirty_write(PlayC),
 			Sockets = maps:keys(MapId),			
 			lists:foreach(fun(Sock) ->
 								  gen_tcp:send(Sock, Pos2)
@@ -198,13 +208,13 @@ handle_call({send_position, [S]}, _From, #state{mapScore= MapScore, mapPosId=Map
 			Pos22 = << <<"5;">>/binary, Id/binary, <<";19,0\n">>/binary >>,
 			Pos21 = <<"19,0">>,
 			PlayC = #playercoord{nbplayer=2, coord= Pos21, nbsweet=0},
-			mnesia:dirty_write(PlayC),			
+%% 			mnesia:dirty_write(PlayC),			
 			Sockets = maps:keys(MapId),			
 			lists:foreach(fun(Sock) ->
 								  gen_tcp:send(Sock, Pos2)
 						  end, Sockets),
-%% 			Pos212 = << <<"5;">>/binary, Id1/binary, <<";0,0\n">>/binary>>,
-%% 			send_pos(Pos212, S),
+			%% 			Pos212 = << <<"5;">>/binary, Id1/binary, <<";0,0\n">>/binary>>,
+			%% 			send_pos(Pos212, S),
 			Points3 = << <<"7;">>/binary, Points/binary, <<"\n">>/binary>>,
 			io:format("Point All ~p~n", [Points3]),
 			send_pos(Points3, S1),
@@ -224,7 +234,7 @@ handle_call({send_position, [S]}, _From, #state{mapScore= MapScore, mapPosId=Map
 						  end, Sockets),
 			Pos31 = <<"0,19">>,
 			PlayC = #playercoord{nbplayer=3, coord= Pos31, nbsweet=0},
-			mnesia:dirty_write(PlayC),	
+%% 			mnesia:dirty_write(PlayC),	
 			Map21 = maps:put(Id, Pos31, MapPos),
 			Map31 = maps:put(Id, 0, MapScore),
 			Pointbin12 = parse_list(Points),
@@ -246,7 +256,7 @@ handle_call({send_position, [S]}, _From, #state{mapScore= MapScore, mapPosId=Map
 						  end, Sockets),
 			Pos31 = <<X1/binary,<<",">>/binary, Y2/binary>>,
 			PlayC = #playercoord{nbplayer=Nbj2, coord= Pos31, nbsweet=0},
-			mnesia:dirty_write(PlayC),
+%% 			mnesia:dirty_write(PlayC),
 			Map21 = maps:put(Id, Pos31, MapPos),
 			Map31 = maps:put(Id, 0, MapScore),
 			Pointbin12 = parse_list(Points),
@@ -255,6 +265,14 @@ handle_call({send_position, [S]}, _From, #state{mapScore= MapScore, mapPosId=Map
 			State3 = State#state{nbplayer=Nbj2,  mapPosId = Map21, mapScore=Map31},
 			{reply, Reply, State3}
 	end;
+handle_call({reconnect, [S, Id]}, _From, #state{mapSocketId=MapId}=State) ->	
+	MapList = maps:to_list(MapId),
+	Valu = lists:keyfind( Id, 2, MapList),
+	MapId2 = maps:remove(element(1, Valu), MapId),
+	MapId1 = maps:put(S, Id, MapId2),
+	io:format("Reconnect ~p~n", [MapId1]),
+	State1 = State#state{mapSocketId=MapId1},
+	{reply, ok, State1};
 handle_call(_Call, _From, State) -> {reply, ko, State}.
 
 -spec handle_info({nodedown, atom()}, state()) -> {stop, nodedown, state()} | {noreply, state()}.
@@ -266,14 +284,15 @@ handle_info(_Info, State) ->
 handle_cast(_Msg, State) -> {noreply, State}.
 %% @private
 -spec terminate(_, state()) -> ok.
-terminate(_Reason, _State) -> ok.
+terminate(_Reason, _State) -> 
+	ok.
 %% @private
 -spec code_change(term(), state(), term()) -> {ok, state()}.
 code_change(_OldVersion, State, _Extra) -> {ok, State}.
 
-%%Listener sur le port 5678
+%%Listener sur le port 5678 
 start_s() ->
-	case gen_tcp:listen(5678, [binary, {packet, 0}, 
+	case gen_tcp:listen(5678, [binary, {packet, 0}, {reuseaddr, true},
 							   {active, false}]) of
 		{ok, ListenSock} ->
 			start_servers(ListenSock);
@@ -310,7 +329,15 @@ loop(S) ->
 							io:format("Socket ~w closed [~w]~n",[S,self()]),
 							ok
 					end;
+				<<"reconect">> ->
+					case gen_tcp:recv(S, 0) of
+						{ok, Data1} ->
+							reconnect(S, Data1);
+						{error, closed} ->
+							io:format("Socket ~w closed [~w]~n",[S,self()])
+					end;
 				<<"newgame">> ->
+					io:format("new Game", []),
 					restart(S);
 				Other -> 	
 					test_position(S, Other)
@@ -321,18 +348,27 @@ loop(S) ->
 			ok
 	end.
 
+%% reco() ->
+%% 	mnesia:start(),
+%% 	Result = mnesia:info(),
+%% 	Result = mnesia:dirty_all_keys(#socketId{}),
+%% 	io:format("result ~p~n", [Result]).
+
 %%Faulth tolerance save in disc
 create_table() ->
 	io:format("Create table ~n", []),
-	%% 	mnesia:create_schema([node()]),
+%% 	mnesia:create_schema([node()]),
 	mnesia:start(),
 	%% 	{disc_copies, [node()]}, {disc_copies, [node()]},
 	Table = [
 			 {attributes, record_info(fields, point)}],
 	Table1 = [
 			  {attributes, record_info(fields, playercoord)}],
-	Test = mnesia:create_table(point , Table),							  
-	io:format("Create table ~p~n", [Test]),
+%% 	Table2 = [ {disc_copies, [node()]},
+%% 			   {attributes, record_info(fields, socketId)}],
+	mnesia:create_table(point , Table),	
+%% 	Test = mnesia:create_table(socketId , Table2),
+%% 	io:format("Create table ~p~n", [Test]),
 	mnesia:create_table(playercoord, Table1).
 
 %%TODO check if already exist and random uniform
@@ -344,7 +380,7 @@ put_coordonnees(N) ->
 	S1 = list_to_binary(integer_to_list(X)),
 	S2 = list_to_binary(integer_to_list(Y)),
 	Point = #point{coordX=S1, coordY=S2},
-	mnesia:dirty_write(Point),
+%% 	mnesia:dirty_write(Point),
 	Point2 = <<S1/binary,<<",">>/binary, S2/binary>>,
 	set_point(Point2),
 	put_coordonnees(N-1).
@@ -395,9 +431,9 @@ test_point(MapScore, Sockets, New_pos, Points, Nb1, Nb2, Nb3, Player, Nbpas) ->
 		0 ->
 			Nbpas2 = 0,
 			Nbplay2 = 0,
-			ListScore = maps:values(MapScore),
+			ListScore = maps:values(NewMapSc),
 			MaxScore = lists:max(ListScore),
-			PlayerMax = maps:to_list(MapScore),
+			PlayerMax = maps:to_list(NewMapSc),
 			lists:foreach(fun(Play) -> 
 								  case Play of
 									  {Value, MaxScore} -> 
@@ -405,7 +441,7 @@ test_point(MapScore, Sockets, New_pos, Points, Nb1, Nb2, Nb3, Player, Nbpas) ->
 										  lists:foreach(fun(Sock) ->
 																gen_tcp:send(Sock, Posnew4)
 														end, Sockets);
-									  	_ -> io:format("Loose")
+									  _ -> io:format("Loose")
 								  end
 						  end, PlayerMax),
 			
@@ -416,7 +452,7 @@ test_point(MapScore, Sockets, New_pos, Points, Nb1, Nb2, Nb3, Player, Nbpas) ->
 			Nb122 = Nb12,
 			Nb22 = Nb2,
 			Nb33 = Nb3,
-			Nbplay2 = maps:size(MapScore),
+			Nbplay2 = lists:size(MapScore),
 			Nbpas2 = Nbpas,
 			io:format("Point +1 ~p ~n", [Nb])
 	end,
