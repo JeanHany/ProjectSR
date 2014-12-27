@@ -1,6 +1,6 @@
 # Distributed System
 
-Use https://erlangcentral.org/wiki/index.php?title=A_Framework_for_Clustering_Generic_Server_Instances for active replication
+Use https://erlangcentral.org/wiki/index.php?title=A_Framework_for_Clustering_Generic_Server_Instances for passive replication
 
 ## TODO
 
