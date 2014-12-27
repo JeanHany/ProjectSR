@@ -14,10 +14,9 @@ $make
 	
 Server *2 or more
 
-cd ebin
-$erl -sname name (*2 name different)
-net_adm:ping(node). (to connect node, Do in 1 node)
-serverErlang:start_link(). (Do in nodes)
+* $./startServer.sh name (*2 name different)
+* net_adm:ping(node). (to connect node, Do in 1 node)
+* serverErlang:start_link(). (Do in nodes)
 
 Client
 
