@@ -280,6 +280,13 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 					String newstring = userInput.substring(2);
 					add_cercle(newstring, window);
 				}
+				else if(tab_S[0].equals("8"))
+				{
+					Rectangle valeur = hashmapRect.get(tab_S[1]);
+					myContainer.remove(valeur);
+					hashmapRect.remove(tab_S[1]);
+					myContainer.repaint();
+				}
 			}
 		}
 		else{

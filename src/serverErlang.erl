@@ -38,9 +38,28 @@ set_point(Point) -> gen_server:call({global, ?MODULE}, {set_point, [Point]}).
 
 reconnect(S, Id) -> gen_server:call({global, ?MODULE}, {reconnect, [S, Id]}).
 
+player_disconnect(S)->gen_server:call({global, ?MODULE}, {player_disconnect, [S]}).
+
+handle_call({player_disconnect, [S]},_From, #state{ mapPosId = MapPos, mapSocketId = MapSock, nbplayer = Nbplay,
+    mapScore = MapScore}=State) ->
+
+  Id = maps:get(S, MapSock),
+  MapPos2 = maps:remove(Id, MapPos),
+  MapScore2 = maps:remove(Id, MapScore),
+  MapSock2 = maps:remove(S, MapSock),
+
+  Msg = <<<<"8;">>/binary,Id/binary, <<"\n">>/binary>>,
+  Sockets = maps:keys(MapSock2),
+  lists:foreach(fun(Sock) ->
+    gen_tcp:send(Sock, Msg)
+  end, Sockets),
+
+  State2 = State#state{mapScore = MapScore2, nbplayer = Nbplay-1, mapPosId = MapPos2, mapSocketId = MapSock2},
+
+  {reply, ok, State2};
+
 %%TODO passe pos entre fonction
 handle_call({test_position, [S, Pos]}, _From, #state{mapPosId = MapPos, mapSocketId = MapSock, points = Points,
-
   mapScore = MapScore, nbpas = Nbpas, nbplayer = _Nbplay} = State) ->
   [X, Y] = binary:split(Pos, <<",">>),
   X1 = list_to_integer(binary_to_list(X)),
@@ -228,6 +247,7 @@ loop(S) ->
       loop(S);
     {error, closed} ->
       io:format("Socket ~w closed [~w]~n", [S, self()]),
+      player_disconnect(S),
       ok
   end.
 
