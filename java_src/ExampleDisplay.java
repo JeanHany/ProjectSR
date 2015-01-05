@@ -29,7 +29,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Container;
 import java.awt.Point;
-import java.awt.event.*; 
+import java.awt.event.*;
 
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -61,8 +61,8 @@ abstract class AbstractGridShape extends JComponent {
 	 * size of the ExampleDisplay associated with the AbstractGridShape */
 	public void paint(Graphics g) {
 		this.drawShape(g,
-				dis.cellSize/2 + x*dis.cellSize, 
-				dis.cellSize/2 + y*dis.cellSize, 
+				dis.cellSize/2 + x*dis.cellSize,
+				dis.cellSize/2 + y*dis.cellSize,
 				dis.cellSize, dis.cellSize);
 	}
 
@@ -116,7 +116,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 
 	/* gameMap contains the plan of the sweets to collect initialized to
 	 * null by default */
-	static Circle[][] gameMap = null; 
+	static Circle[][] gameMap = null;
 
 	public ExampleDisplay(){
 		super();
@@ -140,7 +140,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	public void keyReleased(KeyEvent ke){}
 
 	/* where the real work happens: reacting to key being pressed */
-	public void keyPressed (KeyEvent ke){ 
+	public void keyPressed (KeyEvent ke){
 		int keyCode = ke.getKeyCode();
 		if (!moveTable.containsKey(keyCode)) return ;
 		int[] test = moveTable.get(keyCode);
@@ -172,11 +172,11 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 		bufOut.write( a[0] );
 		bufOut.flush();
 		arrayList.add(a[0]);
-		in =	
+		in =
 				new BufferedReader(
 						new InputStreamReader(socket.getInputStream()));
 
-		// Fonction receive et fonction put triangle et fonction send4  		
+		// Fonction receive et fonction put triangle et fonction send4
 		window = new ExampleDisplay();
 		gameMap = new Circle[gridSize][gridSize];
 		new Thread() {
@@ -197,28 +197,22 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 							bufOut.flush();
 							bufOut.write(play);
 							bufOut.flush();
-							in =	
+							in =
 									new BufferedReader(
 											new InputStreamReader(socket.getInputStream()));
-							
+
 						}
 						receive();
 					}catch(IOException io){
-						System.out.println("Error "+io.toString());		      
-					}catch(NullPointerException nl)
-					{
-						System.out.println("Error"+nl.toString());
-						try{
-							socket.connect(inetSocketAddress);
-						}catch(IOException io){
-							System.out.println("Error connect"+io.toString());		      
-						}
-//						try{
-//							receive();
-//						}catch(IOException io){
-//							System.out.println("Error "+io.toString());		      
-//						}
+						try {
+
+							socket.close();
+
+						}catch(IOException io2) {
+                            System.out.println("Error " + io2.toString());
+                        }
 					}
+
 				}
 			}
 		}.start();
@@ -273,7 +267,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 					Set cles = hashmapRect.keySet();
 					Iterator it = cles.iterator();
 					while (it.hasNext()){
-						Object cle = it.next(); 
+						Object cle = it.next();
 						Rectangle valeur = hashmapRect.get(cle);
 						myContainer.remove(valeur);
 					}
@@ -333,7 +327,7 @@ public class ExampleDisplay extends JFrame implements KeyListener {
 	{
 		String[] npos = pos.split(",");
 		int[] newpos = {Integer.parseInt(npos[0]), Integer.parseInt(npos[1])};
-		Circle c = gameMap[newpos[0]][newpos[1]];		
+		Circle c = gameMap[newpos[0]][newpos[1]];
 		myContainer.remove(c);
 		System.out.println("Score player "+ player +": "+ score);
 		gameMap[newpos[0]][newpos[1]]=null;
