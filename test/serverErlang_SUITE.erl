@@ -45,7 +45,9 @@ end_per_suite(_Config) ->
 %% %% @end
 %% %%--------------------------------------------------------------------
 init_per_group(_GroupName, Config) ->
+	net_adm:ping(node1@debian),
 	application:start(serverErlang),
+	timer:sleep(2000),	
 	Config.
 %% %%--------------------------------------------------------------------
 %% %% @spec end_per_group(GroupName, Config0) ->
@@ -95,7 +97,8 @@ groups() ->
 	[
 	 {test_recv, [], [test_receive, test_receive2]},
 	 {test_pos, [], [test_pos]},
-	 {test_pos2, [], [test_pos2]}
+	 {test_pos2, [], [test_pos2]},
+	 {test_c, [], [test_crash]}
 	].
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -106,9 +109,11 @@ groups() ->
 %% @end
 %%--------------------------------------------------------------------
 all() ->
-	[{group, test_recv},
-	 {group, test_pos},
-	 {group, test_pos2}].
+	[{group, test_c}
+%% 	 {group, test_recv},
+%% 	 {group, test_pos},
+%% 	 {group, test_pos2}
+	 ].
 %
 % @doc Test creation of a new resource on a new ID.
 % expect: "result"
@@ -126,7 +131,7 @@ test_receive(_Config) ->
 			Result = <<"ko">>
 	end,
 	gen_tcp:close(Sock1),
-	?assertEqual(Result, <<"ok\n5;player;0,0\n">> ).
+	?assertEqual(Result, <<"ok\n">>).
 
 test_receive2(_Config) ->
 	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
@@ -140,7 +145,7 @@ test_receive2(_Config) ->
 			Result = <<"ko">>
 	end,
 	gen_tcp:close(Sock2),
-	?assertEqual(Result, <<"ok\n5;player2;19,0\n5;player;0,0\n">> ).
+	?assertEqual(Result, <<"ok\n">>).
 
 test_pos(_Config) ->
 	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
@@ -155,7 +160,7 @@ test_pos(_Config) ->
 	gen_tcp:recv(Sock2, 0),
 	gen_tcp:recv(Sock1, 0),
 	gen_tcp:recv(Sock2, 0),
-	gen_tcp:recv(Sock1, 0),
+	timer:sleep(100),
 	gen_tcp:send(Sock1, <<"0,1">>),
 	case gen_tcp:recv(Sock1, 0) of
 		{ok, V2} -> 
@@ -163,7 +168,6 @@ test_pos(_Config) ->
 		{error, _Result2} ->
 			Result2 = <<"ko">>
 	end,
-	io:format("test ~p~n", [Result2]),
 	gen_tcp:close(Sock1),
 	gen_tcp:close(Sock2),
 	?assertEqual(Result2, <<"player1;0,1\n">> ).
@@ -181,7 +185,6 @@ test_pos2(_Config) ->
 	gen_tcp:recv(Sock2, 0),
 	gen_tcp:recv(Sock1, 0),
 	gen_tcp:recv(Sock2, 0),
-	gen_tcp:recv(Sock1, 0),
 	gen_tcp:send(Sock2, <<"0,-1">>),
 	case gen_tcp:recv(Sock1, 0) of
 		{ok, V2} -> 
@@ -192,3 +195,21 @@ test_pos2(_Config) ->
 	gen_tcp:close(Sock1),
 	gen_tcp:close(Sock2),
 	?assertEqual(Result2, <<"player2;0,-1\n">> ).
+
+test_crash(_Config) ->
+	{ok, Sock1} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	{ok, Sock2} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	gen_tcp:send(Sock1, <<"ok">>),
+	timer:sleep(100),
+	gen_tcp:send(Sock1, <<"player1">>),
+	gen_tcp:recv(Sock1, 0),	
+	gen_tcp:send(Sock2, <<"ok">>),
+	timer:sleep(100),
+	gen_tcp:send(Sock2, <<"player2">>),
+	gen_tcp:recv(Sock2, 0),
+	gen_tcp:recv(Sock1, 0),
+	gen_tcp:recv(Sock2, 0),
+	application:stop(serverErlang),
+	timer:sleep(1000),
+	{Ok, Sock} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	?assertEqual(Ok, ok).

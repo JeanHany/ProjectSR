@@ -42,20 +42,16 @@ player_disconnect(S)->gen_server:call({global, ?MODULE}, {player_disconnect, [S]
 
 handle_call({player_disconnect, [S]},_From, #state{ mapPosId = MapPos, mapSocketId = MapSock, nbplayer = Nbplay,
     mapScore = MapScore}=State) ->
-
   Id = maps:get(S, MapSock),
   MapPos2 = maps:remove(Id, MapPos),
   MapScore2 = maps:remove(Id, MapScore),
   MapSock2 = maps:remove(S, MapSock),
-
   Msg = <<<<"8;">>/binary,Id/binary, <<"\n">>/binary>>,
   Sockets = maps:keys(MapSock2),
   lists:foreach(fun(Sock) ->
     gen_tcp:send(Sock, Msg)
   end, Sockets),
-
   State2 = State#state{mapScore = MapScore2, nbplayer = Nbplay-1, mapPosId = MapPos2, mapSocketId = MapSock2},
-
   {reply, ok, State2};
 
 %%TODO passe pos entre fonction
@@ -76,7 +72,6 @@ handle_call({test_position, [S, Pos]}, _From, #state{mapPosId = MapPos, mapSocke
       Reply = ok,
       MapNPos = maps:put(Id, New_pos, MapPos),
       {NewPoint, Nbpas2, Nbplay2, NewMapSc} = new_position(MapScore, MapSock, Pos, Points, New_pos, Nbpas, Id),
-      %%TODO change pos player
       State2 = State#state{points = NewPoint, mapScore = NewMapSc,
         nbpas = Nbpas2, nbplayer = Nbplay2, mapPosId = MapNPos}
   end,
