@@ -57,7 +57,7 @@ init_per_group(_GroupName, Config) ->
 %% %% @end
 %% %%--------------------------------------------------------------------
 end_per_group(_GroupName, _Config) ->
-	application:stop(serverErlang),
+%% 	application:stop(serverErlang),
 	ok.
 %% %%--------------------------------------------------------------------
 %% %% @spec init_per_testcase(TestCase, Config0) ->
@@ -109,10 +109,10 @@ groups() ->
 %% @end
 %%--------------------------------------------------------------------
 all() ->
-	[{group, test_c}
-%% 	 {group, test_recv},
-%% 	 {group, test_pos},
-%% 	 {group, test_pos2}
+	[{group, test_pos2},
+	 {group, test_recv},
+	 {group, test_pos},
+	 {group, test_c}
 	 ].
 %
 % @doc Test creation of a new resource on a new ID.
@@ -212,4 +212,7 @@ test_crash(_Config) ->
 	application:stop(serverErlang),
 	timer:sleep(1000),
 	{Ok, Sock} = gen_tcp:connect("localhost", 5678, [binary, {packet, raw}, {active, false}]),
+	gen_tcp:send(Sock, <<"ok">>),
+	timer:sleep(100),
+	gen_tcp:send(Sock, <<"player1">>),
 	?assertEqual(Ok, ok).
