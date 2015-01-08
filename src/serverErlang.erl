@@ -38,20 +38,20 @@ set_point(Point) -> gen_server:call({global, ?MODULE}, {set_point, [Point]}).
 
 reconnect(S, Id) -> gen_server:call({global, ?MODULE}, {reconnect, [S, Id]}).
 
-player_disconnect(S)->gen_server:call({global, ?MODULE}, {player_disconnect, [S]}).
+player_disconnect(S) -> gen_server:call({global, ?MODULE}, {player_disconnect, [S]}).
 
-handle_call({player_disconnect, [S]},_From, #state{ mapPosId = MapPos, mapSocketId = MapSock, nbplayer = Nbplay,
-    mapScore = MapScore}=State) ->
+handle_call({player_disconnect, [S]}, _From, #state{mapPosId = MapPos, mapSocketId = MapSock, nbplayer = Nbplay,
+  mapScore = MapScore} = State) ->
   Id = maps:get(S, MapSock),
   MapPos2 = maps:remove(Id, MapPos),
   MapScore2 = maps:remove(Id, MapScore),
   MapSock2 = maps:remove(S, MapSock),
-  Msg = <<<<"8;">>/binary,Id/binary, <<"\n">>/binary>>,
+  Msg = <<<<"8;">>/binary, Id/binary, <<"\n">>/binary>>,
   Sockets = maps:keys(MapSock2),
   lists:foreach(fun(Sock) ->
     gen_tcp:send(Sock, Msg)
   end, Sockets),
-  State2 = State#state{mapScore = MapScore2, nbplayer = Nbplay-1, mapPosId = MapPos2, mapSocketId = MapSock2},
+  State2 = State#state{mapScore = MapScore2, nbplayer = Nbplay - 1, mapPosId = MapPos2, mapSocketId = MapSock2},
   {reply, ok, State2};
 
 %%TODO passe pos entre fonction
@@ -87,7 +87,7 @@ handle_call({set_point, [Point]}, _From, #state{points = Points, nbpas = Pas} = 
 
     Pas2 =< 10 ->
       case lists:member(Point, Points) of
-        false -> Points2 = lists:append(Points,[Point]);
+        false -> Points2 = lists:append(Points, [Point]);
         true -> Points2 = Points
       end,
       State3 = State#state{points = Points2, nbpas = Pas2};
@@ -97,7 +97,7 @@ handle_call({set_point, [Point]}, _From, #state{points = Points, nbpas = Pas} = 
 
 handle_call({send_position, [S, Id]}, _From, #state{mapScore = MapScore, mapPosId = MapPos, mapSocketId = MapId, nbplayer = Nbj, points = Points} = State) ->
 
-  Pos = put_player(),
+  Pos = put_player(Points, Nbj, MapPos),
   PosMsg = <<<<"5;">>/binary, Id/binary, <<";">>/binary, Pos/binary, <<"\n">>/binary>>,
   if Nbj == 0 ->
 
@@ -260,12 +260,37 @@ put_point(N) ->
   put_point(N - 1).
 
 
-put_player() ->
+put_player(Points, Nbplay, MapPos) ->
   X = random:uniform(20) - 1,
   Y = random:uniform(20) - 1,
   X1 = list_to_binary(integer_to_list(X)),
-  Y2 = list_to_binary(integer_to_list(Y)),
-  <<X1/binary, <<",">>/binary, Y2/binary>>.
+  Y1 = list_to_binary(integer_to_list(Y)),
+  Pos = <<X1/binary, <<",">>/binary, Y1/binary>>,
+
+  PosIsNotFree = not pos_is_free(Pos, Points, Nbplay, MapPos),
+  if
+    PosIsNotFree ->
+      put_player(Points, Nbplay, MapPos);
+    true ->
+      Pos
+  end.
+
+pos_is_free(Pos, Points, Nbplay, MapPos) ->
+
+  case lists:member(Pos, Points) of
+    true ->
+      false;
+    false ->
+      if
+        Nbplay == 0 ->
+          true;
+        true ->
+          case lists:member(Pos, maps:values(MapPos)) of
+            true -> false;
+            false -> true
+          end
+      end
+  end.
 
 send_pos(Pos, S) ->
   io:format("Send socket ~p~n", [Pos]),
