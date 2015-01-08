@@ -4,8 +4,10 @@ Use https://erlangcentral.org/wiki/index.php?title=A_Framework_for_Clustering_Ge
 
 ## TODO
 
-Use better serialization (probably MessagePack.
+Use better serialization (probably MessagePack).
+
 Use logger.
+
 Refactor some parts of the code.
 
 ## Compiling
